@@ -1,14 +1,80 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const router = express.Router();
 require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
+const path_upload = '../uploads';
 
 // Secret key pour JWT (vous devriez la garder dans un fichier .env)
 const JWT_SECRET = process.env.JWT_SECRET;
 const SECRET_KEY = process.env.SECRET_KEY;
 const REFRESH_SECRET = process.env.REFRESH_SECRET;
+
+
+
+// Vérifier si le dossier existe, sinon le créer
+if (!fs.existsSync(path_upload)) {
+  fs.mkdirSync(path_upload, { recursive: true });
+}
+
+// Configuration du stockage des fichiers
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, path_upload)); 
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname); // Génère un nom unique
+  },
+});
+
+const upload = multer({ storage });
+
+// Mis à jour info users
+router.put('/users/:id', upload.fields([{ name: 'photo', maxCount: 1 }, { name: 'coverPhoto', maxCount: 1 }]), async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'ID utilisateur invalide.' });
+  }
+
+  try {
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+    }
+
+    // ✅ Mise à jour des images si elles existent
+    const endpoint = "http://localhost:5000/uploads/";
+    if (req.files.photo) {
+      user.photo = endpoint + req.files.photo[0].filename;
+    }
+    if (req.files.coverPhoto) {
+      user.coverPhoto = endpoint + req.files.coverPhoto[0].filename;
+    }
+
+    // ✅ Mise à jour des autres champs textuels
+    if (req.body.name) {
+      user.name = req.body.name;
+    }
+    if (req.body.presentation) {
+      user.presentation = req.body.presentation;
+    }
+
+    const updatedUser = await user.save();
+    res.status(200).json({ message: 'Mise à jour réussie.', user: updatedUser });
+  } catch (error) {
+    console.error('Erreur mise à jour :', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+
+
 
 
 // Fonction pour générer les tokens
@@ -170,6 +236,18 @@ router.get('/universities', async (req, res) => {
   }
 });
 
+// Recuperer une universite par id
+router.get('/users/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const universities = await User.findById(id);
+    res.json(universities);
+  } catch (err) {
+    console.error('Erreur lors de la récupération de l\'universités:', err);
+    res.status(500).json({ error: 'Une erreur est survenue. Veuillez réessayer.' });
+  }
+});
+
 router.post('/logout', async (req, res) => {
   const { refreshToken } = req.body;
 
@@ -184,6 +262,10 @@ router.post('/logout', async (req, res) => {
     res.status(500).json({ message: 'Erreur lors de la déconnexion.' });
   }
 });
+
+
+
+
 
 
 module.exports = router;
