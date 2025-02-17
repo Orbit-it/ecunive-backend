@@ -5,6 +5,7 @@ const programSchema = new mongoose.Schema({
   description: { type: String },
   price: { type: Number, required: true },
   duration: { type: Number, required: true },
+  applications: [String],
   universityId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   attachments: [String], // Liste d'URLs des images associées au programme
 }, { timestamps: true });

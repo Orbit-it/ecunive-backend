@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   presentation: {type: String}, // Présentation de l'université
   canAddProgram: { type: Boolean, default: false },
+  canCandidate: { type: Boolean, default: false}, // passed to true when the student put his document into his space
   canAddPublication: { type: Boolean, default: false },
   canManageCandidates: { type: Boolean, default: false },
   refreshToken: { type: String }, // Ajout du champ pour le token

@@ -8,6 +8,7 @@ const router = express.Router();
 require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
+const authenticate = require('../middlewares/authenticate');
 const path_upload = '../uploads';
 
 // Secret key pour JWT (vous devriez la garder dans un fichier .env)
@@ -69,6 +70,44 @@ router.put('/users/:id', upload.fields([{ name: 'photo', maxCount: 1 }, { name: 
     res.status(200).json({ message: 'Mise à jour réussie.', user: updatedUser });
   } catch (error) {
     console.error('Erreur mise à jour :', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+
+
+// Authentifier une université
+
+router.put('/users/:id', async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'ID utilisateur invalide.' });
+  }
+
+  try {
+    const university = await User.findById(id);
+    if (!university) {
+      return res.status(404).json({ message: 'Université non trouvée.' });
+    }
+
+
+    // ✅ Mise à jour des autres champs textuels
+    if (req.body.isAuthentic) {
+      university.canAddProgram = true;
+      university.canAddPublication = true;
+      university.canManageCandidates = true;
+    }else {
+      university.canAddProgram = false;
+      university.canAddPublication = false;
+      university.canManageCandidates = false;
+    }
+    
+
+    const updatedUniversity = await university.save();
+    res.status(200).json({ message: 'Auhtentification de université réussie.', updatedUniversity });
+  } catch (error) {
+    console.error('Erreur authentication université :', error);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
@@ -236,18 +275,23 @@ router.get('/universities', async (req, res) => {
   }
 });
 
-// Recuperer une universite par id
-router.get('/users/:id', async (req, res) => {
-  const { id } = req.params;
+// Recuperer une university par son Id
+router.get('/universities/:universityId', async (req, res) => {
   try {
-    const universities = await User.findById(id);
-    res.json(universities);
+    const university = await User.findById(req.params.universityId); 
+    if (!university) {
+      return res.status(404).json({ error: 'Université non trouvée.' });
+    }
+    res.json(university);
   } catch (err) {
-    console.error('Erreur lors de la récupération de l\'universités:', err);
+    console.error('Erreur lors de la récupération de cette université:', err);
     res.status(500).json({ error: 'Une erreur est survenue. Veuillez réessayer.' });
   }
 });
 
+
+
+// Se deconnecter
 router.post('/logout', async (req, res) => {
   const { refreshToken } = req.body;
 
@@ -262,6 +306,41 @@ router.post('/logout', async (req, res) => {
     res.status(500).json({ message: 'Erreur lors de la déconnexion.' });
   }
 });
+
+// Fonction pour s'abonner à une université
+router.post('/follow/:universityId',authenticate, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const universityId = req.params.universityId;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Utilisateur non authentifié' });
+    }
+
+    const university = await User.findById(universityId);
+    if (!university) return res.status(404).json({ message: 'Université non trouvée' });
+
+    // S'abonner à l'université si tout est bon !!!!
+
+    const abonnement = university.listAbonnements.includes(userId);
+    
+    if (abonnement) {
+      university.listAbonnements.pull(userId); // Désabonner
+    } else {
+      university.listAbonnements.push(userId); // Abonner
+    }
+
+    await university.save();
+
+    res.status(200).json({
+      abonnement: abonnement
+    });
+  } catch (error) {
+    console.error('Erreur lors abonnement:', error);
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+});
+
 
 
 

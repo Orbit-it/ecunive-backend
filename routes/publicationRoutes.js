@@ -7,7 +7,6 @@ const fs = require('fs');
 const path_upload = '../uploads';
 const authenticate = require('../middlewares/authenticate');
 
-
 // Vérifier si le dossier existe, sinon le créer
 if (!fs.existsSync(path_upload)) {
   fs.mkdirSync(path_upload, { recursive: true });

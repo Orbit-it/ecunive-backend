@@ -7,6 +7,8 @@ const programRoutes = require('./routes/programRoutes');
 const publicationRoutes = require('./routes/publicationRoutes');
 const mediaRoutes = require('./routes/mediaRoutes');
 const newsRoutes = require('./routes/newsRoutes');
+const candidatureRoutes = require('./routes/candidatureRoutes');
+const notificationsRoutes = require('./routes/notificationRoutes');
 
 
 const app = express();
@@ -33,6 +35,8 @@ app.use('/api/programs', programRoutes);
 app.use('/api/publications', publicationRoutes);
 app.use('/media', mediaRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/candidatures', candidatureRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Connexion à MongoDB
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })

@@ -1,6 +1,9 @@
 const express = require('express');
 const multer = require('multer');
+const endpointServer = require('../endpoint/endpoint');
 const Program = require('../models/Program');
+const Candidature = require('../models/Candidature');
+const Notification = require('../models/Notification');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
@@ -31,7 +34,7 @@ const upload = multer({ storage });
 router.post('/', authenticate, upload.array('attachments', 5), async (req, res) => {
   try {
     const { title, description, duration, price } = req.body;
-    const endpoint = "http://localhost:5000/uploads/";
+    const endpoint = endpointServer.upload;
 
     // Récupérer l'ID de l'université depuis l'utilisateur authentifié
     const universityId = req.user._id; // Supposons que l'utilisateur représente une université
@@ -61,7 +64,6 @@ router.post('/', authenticate, upload.array('attachments', 5), async (req, res) 
 /**
  * Récupérer tous les programmes
  */
-
 router.get('/', async (req, res) => {
   try {
     const programs = await Program.find().populate('universityId', 'name address');
@@ -69,6 +71,20 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de la récupération des programmes:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des programmes.' });
+  }
+}); 
+
+/**
+ * Récupérer programmes par université
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const programs = await Program.find({ universityId: req.params.id }).populate('universityId', 'name address')
+    .sort({ createdAt: -1 }); // Trier par date de création
+    res.json(programs);
+  } catch (err) {
+    console.error('Erreur:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -139,8 +155,27 @@ router.post('/:programId/apply', authenticate, async (req, res) => {
       return res.status(400).json({ message: 'Vous avez déjà postulé à ce programme.' });
     }
 
+    const newCandidature = new Candidature({
+          title: program.title,
+          statut: "En cours",
+          price: program.price,
+          duration: program.duration,
+          universityId: program.universityId, // Pour Notifier après l'université concerné
+          studentId: userId,
+        });
+    
+    const newNotification = Notification({
+      title: "Nouvelle Candidature ",
+      content: `Nous vous informons qu'une nouvelle candidature pour le programme ${program.title} a été soumise avec succès. Vous pouvez dès à présent consulter les détails de cette candidature dans votre espace administrateur afin d'effectuer l'évaluation nécessaire.`,
+      userId: program.universityId
+    })    
+    
     program.applications.push(userId);
+
+    await newCandidature.save();
     await program.save();
+    await newNotification.save();
+    
     res.json({ message: 'Postulation réussie.' });
   } catch (error) {
     console.error('Erreur lors de la postulation au programme:', error);
