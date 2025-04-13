@@ -17,7 +17,7 @@ if (!fs.existsSync(path_upload)) {
 // Configuration du stockage des fichiers
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, path_upload)); // Assurez-vous que ce chemin existe
+    cb(null, path.join(__dirname, path_upload)); 
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + '-' + file.originalname); // Génère un nom unique
